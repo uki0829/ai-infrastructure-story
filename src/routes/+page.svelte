@@ -48,6 +48,7 @@
   let allExhausted     = $state(false);
   let connectionCount  = $derived(connectedIds.size);
   let pendingCoords    = $state<[number, number] | null>(null);
+  let showMobileSidebar = $state(false);
   // svelte-ignore non_reactive_update
   let mapActions: {
     drawLineToDC: (u: [number, number], dc: any) => void;
@@ -150,6 +151,7 @@
   function selectFacility(dc: DataCenterFeature) {
     selectedFeature = dc;
     showStory = false;
+    showMobileSidebar = false;
     connectOnButtonPress();
   }
   function resetView()   { selectedFeature = null; connectOnButtonPress(); }
@@ -354,10 +356,20 @@
 {#if isStarted}
   <main class="ui-container">
 
+    <!-- Mobile sidebar toggle -->
+    <button class="mobile-list-btn" onclick={() => showMobileSidebar = !showMobileSidebar}>
+      {showMobileSidebar ? '✕' : '☰ LIST'}
+    </button>
+
+    <!-- Mobile sidebar backdrop -->
+    {#if showMobileSidebar}
+      <div class="mobile-backdrop" onclick={() => showMobileSidebar = false}></div>
+    {/if}
+
     <!-- Footprint tracker toggle button -->
     <div class="footprint-controls">
       <button class="footprint-btn" class:active={footprintMode} onclick={toggleFootprintMode}>
-        {footprintMode ? '✕ EXIT TRACKER' : '⊕ SET LOCATION'}
+        {footprintMode ? '✕ EXIT' : '⊕ TRACK'}
       </button>
     </div>
 
@@ -375,12 +387,13 @@
           <span class="hud-label"> / {datacenters.length} reached</span>
         </div>
 
-        <!-- ADDED: up arrow key hint, shown when pin is confirmed and drawing is active -->
+        <!-- Desktop: spacebar hint. Mobile: tap-to-connect button -->
         {#if footprintMode && userMarkerCoords && !allExhausted}
           <div class="hud-key-hint">
             <div class="key-icon" class:active={_arrowInterval !== null}>␣</div>
             <span class="hud-hint" style="margin:0">Hold to connect</span>
           </div>
+          <button class="mobile-connect-btn" onclick={connectOnButtonPress}>+ CONNECT</button>
         {/if}
 
         <!-- CHANGED: removed the confirm-row block — confirm/cancel is now attached to the map marker -->
@@ -405,7 +418,7 @@
       </button>
     </div>
 
-    <aside class="sidebar" in:fly={{ x: -50, duration: 600 }}>
+    <aside class="sidebar" class:mobile-open={showMobileSidebar} in:fly={{ x: -50, duration: 600 }}>
       <header>
         <h3>Infrastructure Explorer</h3>
         <p class="subtitle">Search the physical cloud</p>
@@ -805,4 +818,169 @@
     transition: background 0.1s, border-color 0.1s;
   }
   .key-icon.active { background: #bdffff; color: #000; border-color: #bdffff; }
+
+  /* Mobile-only connect button (hidden on desktop) */
+  .mobile-connect-btn { display: none; }
+
+  /* Mobile list toggle button (hidden on desktop) */
+  .mobile-list-btn { display: none; }
+
+  /* Mobile backdrop */
+  .mobile-backdrop {
+    display: none;
+    position: fixed; inset: 0; z-index: 45;
+    background: rgba(0,0,0,0.5);
+  }
+
+  /* ── Mobile layout ───────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+
+    /* Show mobile-only elements */
+    .mobile-list-btn {
+      display: block;
+      position: fixed; top: calc(40px + 0.65rem); left: 0.75rem; z-index: 25;
+      background: rgba(0,0,0,0.8); color: #bdffff; border: 1px solid #333;
+      padding: 0.45rem 0.75rem; border-radius: 30px; cursor: pointer;
+      font-family: 'Corpta', monospace; font-size: 0.6rem; font-weight: bold;
+      backdrop-filter: blur(10px); pointer-events: auto;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    .mobile-list-btn:hover { border-color: #bdffff; box-shadow: 0 0 12px rgba(189,255,255,0.25); }
+
+    .mobile-backdrop { display: block; }
+
+    .mobile-connect-btn {
+      display: block;
+      width: 100%; margin-top: 0.5rem;
+      background: rgba(189,255,255,0.1); color: #bdffff;
+      border: 1px solid #bdffff; border-radius: 8px;
+      padding: 0.5rem; font-family: 'Corpta', monospace;
+      font-size: 0.6rem; font-weight: bold; cursor: pointer;
+      letter-spacing: 1px; transition: background 0.2s;
+    }
+    .mobile-connect-btn:active { background: rgba(189,255,255,0.25); }
+
+    /* ── Landing ── */
+    .card h1 { font-size: 1.6rem; letter-spacing: 0.12em; }
+    .card p { font-size: 0.8rem; }
+    .start-btn { padding: 0.75rem 1.5rem; font-size: 0.85rem; }
+
+    /* ── Sidebar → bottom drawer ── */
+    .sidebar {
+      top: auto !important;
+      bottom: 0; left: 0 !important; right: 0;
+      width: 100% !important;
+      border-radius: 20px 20px 0 0;
+      max-height: 65vh;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      z-index: 50;
+      padding: 1.25rem 1.25rem 2rem;
+    }
+    .sidebar.mobile-open { transform: translateY(0); }
+
+    /* Drag handle visual cue */
+    .sidebar::before {
+      content: '';
+      display: block; margin: 0 auto 1rem;
+      width: 36px; height: 4px;
+      background: #444; border-radius: 2px;
+    }
+
+    /* ── Story layout → bottom sheet ── */
+    .story-layout {
+      top: auto !important;
+      bottom: 0; left: 0; right: 0 !important;
+      width: 100%; z-index: 15;
+    }
+    .story-box {
+      width: 100% !important;
+      box-sizing: border-box;
+      border-radius: 20px 20px 0 0;
+      max-height: 46vh !important;
+      padding: 1.25rem 1.25rem 0.75rem !important;
+    }
+    .story-box h1 { font-size: 1.1rem !important; margin-bottom: 0.4rem; }
+    .story-box p { font-size: 0.75rem !important; line-height: 1.5; }
+    .skip-btn { top: 0.75rem; right: 0.75rem; }
+
+    /* Shrink story images on mobile */
+    .image-container img { height: 110px !important; }
+    .image-container { margin-bottom: 0.75rem; }
+
+    /* Query viz compact */
+    .query-viz-container { padding: 0.9rem; margin-bottom: 0.75rem; }
+    .query-bars { height: 50px !important; }
+
+    /* ── Nav bar → full-width strip at bottom ── */
+    .nav-bar {
+      position: static !important;
+      left: auto !important; bottom: auto !important; transform: none !important;
+      border-radius: 0 !important;
+      width: 100%; box-sizing: border-box;
+      justify-content: space-between;
+      padding: 0.6rem 1.5rem !important;
+      border-top: 1px solid #2a2a2a;
+      border-left: none; border-right: none; border-bottom: none;
+    }
+    .nav-btn { padding: 0.5rem 1.2rem !important; font-size: 0.75rem; }
+
+    /* ── Top controls — center top, compact ── */
+    .top-controls {
+      top: calc(40px + 0.65rem) !important;
+      left: 50% !important;
+      transform: translateX(-50%) !important;
+    }
+    .style-toggle {
+      font-size: 0.55rem !important;
+      padding: 0.45rem 0.75rem !important;
+    }
+
+    /* ── Footprint controls — top right ── */
+    .footprint-controls {
+      top: calc(40px + 0.65rem) !important;
+      right: 0.75rem !important;
+      left: auto !important;
+    }
+    .footprint-btn {
+      font-size: 0.55rem !important;
+      padding: 0.45rem 0.75rem !important;
+    }
+
+    /* ── Footprint HUD — compact, top-left below controls ── */
+    .footprint-hud {
+      bottom: auto !important;
+      top: calc(40px + 3.75rem) !important;
+      left: 0.75rem !important;
+      width: 160px !important;
+      padding: 0.75rem 0.9rem !important;
+    }
+    .hud-num { font-size: 1.3rem !important; }
+
+    /* Hide keyboard hint on mobile (no keyboard) */
+    .hud-key-hint { display: none !important; }
+
+    /* ── Instruction overlay ── */
+    .instruction-box {
+      padding: 1.5rem 1.25rem !important;
+      max-height: 88vh;
+      overflow-y: auto;
+      border-radius: 16px !important;
+    }
+    .instruction-box h2 { font-size: 1.15rem !important; }
+    .instruction-steps { gap: 0.65rem !important; margin-bottom: 1.2rem !important; }
+    .instruction-step { padding: 0.6rem 0.75rem !important; }
+    .instruction-cta { padding: 0.7rem !important; font-size: 0.6rem !important; }
+
+    /* Story link button */
+    .story-link { font-size: 0.75rem !important; padding: 0.65rem 1rem !important; margin-top: 0.75rem !important; }
+  }
+
+  /* Extra-small phones (< 390px) */
+  @media (max-width: 390px) {
+    .card h1 { font-size: 1.3rem; letter-spacing: 0.08em; }
+    .story-box { max-height: 42vh !important; }
+    .story-box h1 { font-size: 1rem !important; }
+    .image-container img { height: 90px !important; }
+  }
 </style>
