@@ -735,4 +735,63 @@
     70%  { opacity: 1; }
     100% { opacity: 0; }
   }
+
+  /* ── Mobile ──────────────────────────────────── */
+  @media (max-width: 640px) {
+    .scroll-page {
+      padding: 2vh 0 18vh;
+    }
+
+    .page-hero {
+      padding: 3vh 1.25rem 4vh;
+    }
+
+    .page-title {
+      font-size: clamp(1.3rem, 7vw, 1.9rem);
+    }
+
+    .page-subtitle {
+      font-size: 0.68rem;
+    }
+
+    /* Single-column centered — ribbons recalculate from card centers */
+    .zigzag-container {
+      gap: 20vh;
+      padding: 0 1rem;
+    }
+
+    .row,
+    .row.left,
+    .row.right {
+      justify-content: center;
+      padding-left: 0;
+      padding-right: 0;
+    }
+
+    .card {
+      width: calc(100vw - 2rem);
+      max-width: 420px;
+    }
+
+    .pre-hud-tag,
+    .pre-hud-counter {
+      font-size: 0.52rem;
+    }
+
+    .signal-badge {
+      font-size: 0.5rem;
+      padding: 0.25rem 0.65rem;
+      letter-spacing: 2px;
+    }
+
+    .card-label {
+      font-size: 0.58rem;
+      padding: 0.75rem 1rem;
+    }
+
+    .back-btn {
+      font-size: 0.62rem;
+      padding: 0.45rem 0.75rem;
+    }
+  }
 </style>
