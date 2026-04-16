@@ -420,7 +420,10 @@
 
     <aside class="sidebar" class:mobile-open={showMobileSidebar} in:fly={{ x: -50, duration: 600 }}>
       <header>
-        <h3>Infrastructure Explorer</h3>
+        <div class="sidebar-header-row">
+          <h3>Infrastructure Explorer</h3>
+          <button class="sidebar-close-btn" onclick={() => showMobileSidebar = false}>✕</button>
+        </div>
         <p class="subtitle">Search the physical cloud</p>
       </header>
 
@@ -471,7 +474,9 @@
       <div class="story-layout">
         {#key activeIndex}
           <section class="story-box" in:fly={{ y: 20, duration: 400 }}>
-            <button class="skip-btn" onclick={handleSkip}>✕ SKIP STORY</button>
+            <div class="story-top-bar">
+              <button class="skip-btn" onclick={handleSkip}>✕ SKIP STORY</button>
+            </div>
 
             {#if activeIndex === 0}
               <div class="query-viz-container" in:fade>
@@ -536,12 +541,14 @@
           </section>
         {/key}
 
-        <footer class="nav-bar" in:fade>
-          <button class="nav-btn" onclick={handlePrev} disabled={activeIndex === 0}>BACK</button>
-          <div class="counter"><span>{activeIndex + 1}</span> / {storyData.length}</div>
-          <button class="nav-btn" onclick={handleNext} disabled={activeIndex === maxSlide}>NEXT</button>
-        </footer>
       </div>
+
+      <!-- Moved outside story-layout: CSS transform on parent traps fixed children -->
+      <footer class="nav-bar" in:fade>
+        <button class="nav-btn" onclick={handlePrev} disabled={activeIndex === 0}>BACK</button>
+        <div class="counter"><span>{activeIndex + 1}</span> / {storyData.length}</div>
+        <button class="nav-btn" onclick={handleNext} disabled={activeIndex === maxSlide}>NEXT</button>
+      </footer>
     {/if}
 
   </main>
@@ -602,6 +609,16 @@
   .list button.active { background: #ff9b9b; color: #000; border-color: #ff9b9b; font-weight: bold; }
   .reopen-btn { width: 100%; background: #333; color: white; border: none; padding: 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: 'Space Grotesk', sans-serif; margin: 0.3rem 0; }
 
+  /* Sidebar header row with close button */
+  .sidebar-header-row { display: flex; align-items: flex-start; justify-content: space-between; }
+  .sidebar-close-btn {
+    display: none; /* hidden on desktop */
+    background: none; border: none; color: #666; cursor: pointer;
+    font-size: 1rem; padding: 0; line-height: 1; flex-shrink: 0;
+    transition: color 0.2s;
+  }
+  .sidebar-close-btn:hover { color: #ff9b9b; }
+
   .dc-info { margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid #333; }
   .dc-info h4 { color: #ff9b9b; margin: 0 0 0.5rem 0; }
   .dc-info p { font-size: 0.75rem; margin: 0.3rem 0; color: #ccc; }
@@ -613,7 +630,8 @@
   .story-box { background: #f9f4fff2; padding: 2.5rem; border-radius: 16px; width: 400px; position: relative; box-shadow: 0 30px 60px rgba(0,0,0,0.6); max-height: 60vh; overflow-y: auto; }
   .story-box h1 { margin-top: 0; color: #333; font-size: 1.8rem; }
   .story-box p { color: #444; line-height: 1.6; font-family: 'Space Grotesk', sans-serif; }
-  .skip-btn { position: absolute; top: 1rem; right: 1rem; background: none; border: none; font-size: 0.7rem; color: #999; cursor: pointer; }
+  .story-top-bar { display: flex; justify-content: flex-end; margin-bottom: 0.75rem; }
+  .skip-btn { background: none; border: none; font-size: 0.7rem; color: #999; cursor: pointer; padding: 0; }
 
   .query-viz-container {
     background: rgba(10, 10, 10, 0.95);
@@ -835,152 +853,178 @@
   /* ── Mobile layout ───────────────────────────────────────────────────── */
   @media (max-width: 768px) {
 
-    /* Show mobile-only elements */
+    /* ── Mobile list button ── */
     .mobile-list-btn {
-      display: block;
-      position: fixed; top: calc(40px + 0.65rem); left: 0.75rem; z-index: 25;
-      background: rgba(0,0,0,0.8); color: #bdffff; border: 1px solid #333;
-      padding: 0.45rem 0.75rem; border-radius: 30px; cursor: pointer;
-      font-family: 'Corpta', monospace; font-size: 0.6rem; font-weight: bold;
-      backdrop-filter: blur(10px); pointer-events: auto;
+      display: flex; align-items: center; gap: 0.35rem;
+      position: fixed; top: calc(40px + 0.6rem); left: 0.75rem; z-index: 25;
+      background: rgba(0,0,0,0.85); color: #bdffff; border: 1px solid #444;
+      padding: 0.5rem 0.9rem; border-radius: 30px; cursor: pointer;
+      font-family: 'Corpta', monospace; font-size: 0.65rem; font-weight: bold;
+      backdrop-filter: blur(12px); pointer-events: auto;
       transition: border-color 0.2s, box-shadow 0.2s;
+      white-space: nowrap;
     }
-    .mobile-list-btn:hover { border-color: #bdffff; box-shadow: 0 0 12px rgba(189,255,255,0.25); }
 
+    /* ── Mobile backdrop ── */
     .mobile-backdrop { display: block; }
 
+    /* ── Mobile connect button ── */
     .mobile-connect-btn {
       display: block;
-      width: 100%; margin-top: 0.5rem;
-      background: rgba(189,255,255,0.1); color: #bdffff;
-      border: 1px solid #bdffff; border-radius: 8px;
-      padding: 0.5rem; font-family: 'Corpta', monospace;
+      width: 100%; margin-top: 0.6rem;
+      background: rgba(189,255,255,0.08); color: #bdffff;
+      border: 1px solid rgba(189,255,255,0.4); border-radius: 8px;
+      padding: 0.55rem; font-family: 'Corpta', monospace;
       font-size: 0.6rem; font-weight: bold; cursor: pointer;
-      letter-spacing: 1px; transition: background 0.2s;
+      letter-spacing: 1px; transition: background 0.15s;
     }
-    .mobile-connect-btn:active { background: rgba(189,255,255,0.25); }
+    .mobile-connect-btn:active { background: rgba(189,255,255,0.2); }
 
-    /* ── Landing ── */
+    /* ── Landing screen ── */
     .card h1 { font-size: 1.6rem; letter-spacing: 0.12em; }
     .card p { font-size: 0.8rem; }
-    .start-btn { padding: 0.75rem 1.5rem; font-size: 0.85rem; }
+    .start-btn { padding: 0.75rem 1.5rem; font-size: 0.85rem; margin-top: 1.5rem; }
 
-    /* ── Sidebar → bottom drawer ── */
+    /* ── Sidebar → LEFT slide-in drawer (no bottom conflict with story) ── */
     .sidebar {
-      top: auto !important;
-      bottom: 0; left: 0 !important; right: 0;
-      width: 100% !important;
-      border-radius: 20px 20px 0 0;
-      max-height: 65vh;
-      transform: translateY(100%);
-      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+      top: 40px !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: auto !important;
+      width: min(82vw, 300px) !important;
+      border-radius: 0 16px 16px 0 !important;
+      max-height: calc(100vh - 40px) !important;
+      overflow-y: auto;
+      transform: translateX(-105%);
+      transition: transform 0.32s cubic-bezier(0.4, 0, 0.2, 1);
       z-index: 50;
-      padding: 1.25rem 1.25rem 2rem;
+      padding: 1.5rem 1.25rem 2.5rem !important;
     }
-    .sidebar.mobile-open { transform: translateY(0); }
+    .sidebar.mobile-open { transform: translateX(0); }
 
-    /* Drag handle visual cue */
-    .sidebar::before {
-      content: '';
-      display: block; margin: 0 auto 1rem;
-      width: 36px; height: 4px;
-      background: #444; border-radius: 2px;
-    }
+    /* Show close button inside sidebar on mobile */
+    .sidebar-close-btn { display: block; }
 
-    /* ── Story layout → bottom sheet ── */
+    /* Prevent iOS font zoom on search input */
+    .search-box input { font-size: 1rem; padding: 0.65rem 0.9rem; }
+    .list { max-height: 38vh; }
+
+    /* ── Story layout → anchored above fixed nav bar, scrollable ── */
     .story-layout {
+      position: fixed !important;
       top: auto !important;
-      bottom: 0; left: 0; right: 0 !important;
-      width: 100%; z-index: 15;
+      bottom: 100px !important;        /* sits just above the fixed nav bar */
+      left: 50% !important;
+      right: auto !important;
+      transform: translateX(-50%) !important;
+      width: 92vw !important;
+      max-width: 420px !important;
+      max-height: 100vh !important;    /* cap height so map stays visible above */
+      overflow-y: auto !important;
+      -webkit-overflow-scrolling: touch;
+      border-radius: 16px !important;
+      z-index: 15;
+      pointer-events: auto;
     }
+
     .story-box {
       width: 100% !important;
-      box-sizing: border-box;
-      border-radius: 20px 20px 0 0;
-      max-height: 46vh !important;
-      padding: 1.25rem 1.25rem 0.75rem !important;
+      box-sizing: border-box !important;
+      border-radius: 16px !important;
+      max-height: none !important;    /* no inner cap — parent handles scroll */
+      overflow-y: visible !important;
+      padding: 1.1rem 1.2rem 1.25rem !important;
+      box-shadow: 0 -4px 40px rgba(0,0,0,0.55), 0 8px 40px rgba(0,0,0,0.4) !important;
     }
-    .story-box h1 { font-size: 1.1rem !important; margin-bottom: 0.4rem; }
-    .story-box p { font-size: 0.75rem !important; line-height: 1.5; }
-    .skip-btn { top: 0.75rem; right: 0.75rem; }
 
-    /* Shrink story images on mobile */
-    .image-container img { height: 110px !important; }
-    .image-container { margin-bottom: 0.75rem; }
+    /* Remove drag-handle pill */
+    .story-box::before { display: none; }
 
-    /* Query viz compact */
-    .query-viz-container { padding: 0.9rem; margin-bottom: 0.75rem; }
-    .query-bars { height: 50px !important; }
+    .story-box h1 { font-size: 1rem !important; margin: 0 0 0.5rem !important; padding-right: 2rem; line-height: 1.3; }
+    .story-box p  { font-size: 0.73rem !important; line-height: 1.55 !important; margin: 0 0 0.4rem; }
+    .skip-btn { font-size: 0.65rem !important; }
 
-    /* ── Nav bar → full-width strip at bottom ── */
+    /* Full images on mobile — scroll to see them */
+    .image-container { display: block !important; margin-bottom: 0.75rem !important; }
+    .image-container img { height: 200px !important; }
+    .expand-hint { opacity: 1 !important; }
+
+    /* Compact query viz */
+    .query-viz-container { padding: 0.8rem !important; margin-bottom: 0.65rem !important; }
+    .query-bars { height: 44px !important; }
+    .viz-header { margin-bottom: 0.5rem !important; }
+    .stat-unit .viz-value { font-size: 0.9rem !important; }
+
+    /* Story link */
+    .story-link { font-size: 0.7rem !important; padding: 0.55rem 0.85rem !important; margin-top: 0.4rem !important; }
+
+    /* ── Nav bar → fixed at very bottom of screen ── */
     .nav-bar {
-      position: static !important;
-      left: auto !important; bottom: auto !important; transform: none !important;
+      position: fixed !important;
+      bottom: 0 !important;
+      left: 0 !important;
+      right: 0 !important;
+      transform: none !important;
       border-radius: 0 !important;
-      width: 100%; box-sizing: border-box;
-      justify-content: space-between;
-      padding: 0.6rem 1.5rem !important;
-      border-top: 1px solid #2a2a2a;
-      border-left: none; border-right: none; border-bottom: none;
+      width: 100% !important; box-sizing: border-box !important;
+      justify-content: space-between !important;
+      padding: 0.6rem 2rem !important;
+      gap: 0 !important;
+      border-top: 1px solid #2a2a2a !important;
+      border-left: none !important; border-right: none !important; border-bottom: none !important;
+      z-index: 20 !important;
     }
-    .nav-btn { padding: 0.5rem 1.2rem !important; font-size: 0.75rem; }
+    .nav-btn { padding: 0.6rem 1.6rem !important; font-size: 0.75rem !important; min-height: 44px; }
+    .counter { font-size: 0.75rem; }
 
-    /* ── Top controls — center top, compact ── */
+    /* ── Map style toggle — centered at top ── */
     .top-controls {
-      top: calc(40px + 0.65rem) !important;
+      top: calc(40px + 0.6rem) !important;
       left: 50% !important;
       transform: translateX(-50%) !important;
     }
-    .style-toggle {
-      font-size: 0.55rem !important;
-      padding: 0.45rem 0.75rem !important;
-    }
+    .style-toggle { font-size: 0.55rem !important; padding: 0.5rem 0.8rem !important; }
 
     /* ── Footprint controls — top right ── */
     .footprint-controls {
-      top: calc(40px + 0.65rem) !important;
+      top: calc(40px + 0.6rem) !important;
       right: 0.75rem !important;
       left: auto !important;
     }
-    .footprint-btn {
-      font-size: 0.55rem !important;
-      padding: 0.45rem 0.75rem !important;
-    }
+    .footprint-btn { font-size: 0.55rem !important; padding: 0.5rem 0.8rem !important; }
 
-    /* ── Footprint HUD — compact, top-left below controls ── */
+    /* ── Footprint HUD — compact, below top row ── */
     .footprint-hud {
       bottom: auto !important;
-      top: calc(40px + 3.75rem) !important;
+      top: calc(40px + 3.5rem) !important;
       left: 0.75rem !important;
-      width: 160px !important;
-      padding: 0.75rem 0.9rem !important;
+      width: 150px !important;
+      padding: 0.7rem 0.85rem !important;
     }
-    .hud-num { font-size: 1.3rem !important; }
-
-    /* Hide keyboard hint on mobile (no keyboard) */
+    .hud-num { font-size: 1.2rem !important; }
     .hud-key-hint { display: none !important; }
 
-    /* ── Instruction overlay ── */
+    /* ── Instructions modal ── */
     .instruction-box {
-      padding: 1.5rem 1.25rem !important;
-      max-height: 88vh;
+      padding: 1.4rem 1.2rem 1.2rem !important;
+      max-height: 88vh !important;
       overflow-y: auto;
-      border-radius: 16px !important;
     }
-    .instruction-box h2 { font-size: 1.15rem !important; }
-    .instruction-steps { gap: 0.65rem !important; margin-bottom: 1.2rem !important; }
-    .instruction-step { padding: 0.6rem 0.75rem !important; }
-    .instruction-cta { padding: 0.7rem !important; font-size: 0.6rem !important; }
-
-    /* Story link button */
-    .story-link { font-size: 0.75rem !important; padding: 0.65rem 1rem !important; margin-top: 0.75rem !important; }
+    .instruction-box h2  { font-size: 1.1rem !important; }
+    .instruction-lead    { font-size: 0.7rem !important; margin-bottom: 1rem !important; }
+    .instruction-steps   { gap: 0.6rem !important; margin-bottom: 1rem !important; }
+    .instruction-step    { padding: 0.6rem 0.75rem !important; }
+    .step-desc           { font-size: 0.62rem !important; }
+    .instruction-cta     { padding: 0.7rem !important; font-size: 0.6rem !important; }
   }
 
-  /* Extra-small phones (< 390px) */
+  /* ── Extra-small phones (iPhone SE / older, < 390px) ── */
   @media (max-width: 390px) {
-    .card h1 { font-size: 1.3rem; letter-spacing: 0.08em; }
-    .story-box { max-height: 42vh !important; }
-    .story-box h1 { font-size: 1rem !important; }
-    .image-container img { height: 90px !important; }
+    .card h1 { font-size: 1.25rem; letter-spacing: 0.08em; }
+    .story-layout { width: 96vw !important; }
+    .story-box h1 { font-size: 0.88rem !important; }
+    .image-container img { height: 160px !important; }
+    .nav-btn { padding: 0.5rem 1.1rem !important; }
+    .footprint-hud { width: 135px !important; }
   }
 </style>

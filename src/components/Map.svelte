@@ -164,9 +164,9 @@
         filter: ["==", "$type", "LineString"],
         paint: {
           "line-color": ["coalesce", ["get", "lineColor"], "#ffffff"],
-          "line-width": 6,
+          "line-width": 12,
           "line-opacity": 0.18,
-          "line-blur": 4,
+          "line-blur": 6,
         },
       });
       map.addLayer({
@@ -176,9 +176,9 @@
         filter: ["==", "$type", "LineString"],
         paint: {
           "line-color": ["coalesce", ["get", "lineColor"], "#ffffff"],
-          "line-width": 2.5,
+          "line-width": 5,
           "line-opacity": 0.55,
-          "line-blur": 1,
+          "line-blur": 1.5,
         },
       });
       map.addLayer({
@@ -188,7 +188,7 @@
         filter: ["==", "$type", "LineString"],
         paint: {
           "line-color": ["coalesce", ["get", "lineColor"], "#ffffff"],
-          "line-width": 1,
+          "line-width": 2.5,
           "line-opacity": 1,
         },
       });

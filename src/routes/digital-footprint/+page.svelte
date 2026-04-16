@@ -44,7 +44,7 @@
   const nodes = [
     { id: 1, label: 'Personal Computing', side: 'left'  },
     { id: 2, label: 'Hyperscale Datacenter', side: 'right' },
-    { id: 3, label: 'Image 3', side: 'left'  },
+    { id: 3, label: 'Data Processing', side: 'left'  },
     { id: 4, label: 'Environmental Impacts', side: 'right' },
   ];
 
@@ -108,6 +108,11 @@
   let card2Prog    = $derived(lineProg(0));
   let card2Active  = $derived(card2Prog >= 0.88);
   let card2KbCount = $derived(Math.floor(card2Prog * 65536));
+
+  // Card-3 progress: scroll-driven by the ribbon arriving from card 2
+  let card3Prog    = $derived(lineProg(1));
+  let card3Active  = $derived(card3Prog >= 0.88);
+  let card3KbCount = $derived(Math.floor(card3Prog * 32768));
 
   // Reactive progress for the last line (node 3 → node 4)
   // Drives the card-4 digital "power-on" animation
@@ -326,7 +331,7 @@
             <div class="card4-shell" class:revealed={card1Active}>
 
               <img
-                src="/typing%20image.svg"
+                src="/typed.svg"
                 alt="User typing on a device"
                 class="card4-img"
                 style="filter: brightness({card1Active ? 1 : 0.08 + card1Prog * 0.3}) saturate({card1Active ? 1.15 : 0.1})"
@@ -389,16 +394,36 @@
             </div>
 
           {:else}
-            <!-- ── Card 3: generic placeholder ── -->
-            <div class="image-placeholder">
-              <svg viewBox="0 0 80 60" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
-                <rect width="80" height="60" rx="4"
-                  fill="rgba(189,255,255,0.05)" stroke="rgba(189,255,255,0.2)" stroke-width="1"/>
-                <line x1="0" y1="0" x2="80" y2="60" stroke="rgba(189,255,255,0.1)" stroke-width="1"/>
-                <line x1="80" y1="0" x2="0" y2="60" stroke="rgba(189,255,255,0.1)" stroke-width="1"/>
-                <circle cx="40" cy="30" r="12"
-                  fill="none" stroke="rgba(189,255,255,0.2)" stroke-width="1"/>
-              </svg>
+            <!-- ── Card 3: server rack with power-on animation ── -->
+            <div class="card4-shell" class:revealed={card3Active}>
+              <img
+                src="/server.svg"
+                alt="Data being processed inside a server rack"
+                class="card4-img"
+                style="filter: brightness({card3Active ? 1 : 0.08 + card3Prog * 0.3}) saturate({card3Active ? 1.15 : 0.1})"
+              />
+
+              <div class="scanlines" style="opacity:{card3Active ? 0.18 : 0.55}"></div>
+
+              {#if !card3Active}
+                <div class="scan-beam"></div>
+              {/if}
+
+              {#if !card3Active}
+                <div class="pre-hud">
+                  <span class="pre-hud-tag">⬡ PROCESSING DATA</span>
+                  <span class="pre-hud-counter">{card3KbCount.toLocaleString()} / 32,768 KB</span>
+                  <div class="pre-hud-bar">
+                    <div class="pre-hud-fill" style="width:{card3Prog * 100}%"></div>
+                  </div>
+                </div>
+              {/if}
+
+              {#if card3Active}
+                <div class="signal-badge" in:fade={{ duration: 300 }}>
+                  ✦ Processing Complete
+                </div>
+              {/if}
             </div>
           {/if}
 
