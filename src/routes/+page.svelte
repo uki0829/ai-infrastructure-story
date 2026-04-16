@@ -418,7 +418,7 @@
       </button>
     </div>
 
-    <aside class="sidebar" class:mobile-open={showMobileSidebar} in:fly={{ x: -50, duration: 600 }}>
+    <aside class="sidebar" class:mobile-open={showMobileSidebar}>
       <header>
         <div class="sidebar-header-row">
           <h3>Infrastructure Explorer</h3>

@@ -119,9 +119,17 @@
   let card4Prog     = $derived(lineProg(2));
   let card4Active   = $derived(card4Prog >= 0.88);  // threshold to trigger reveal
   let card4KbCount  = $derived(Math.floor(card4Prog * 12847));
+
+  // Responsive ribbon widths — thicker on mobile so the S-curve is visible
+  let winWidth = $state(0);
+  let hw1 = $derived(winWidth > 0 && winWidth < 640 ? 70 : 55);  // halo
+  let hw2 = $derived(winWidth > 0 && winWidth < 640 ? 42 : 30);  // mid glow
+  let hw3 = $derived(winWidth > 0 && winWidth < 640 ? 26 : 18);  // main body
+  let hw4 = $derived(winWidth > 0 && winWidth < 640 ?  9 :  6);  // inner core
+  let he  = $derived(winWidth > 0 && winWidth < 640 ? 26 : 18);  // edge stroke offset
 </script>
 
-<svelte:window bind:scrollY bind:innerHeight={winHeight} />
+<svelte:window bind:scrollY bind:innerHeight={winHeight} bind:innerWidth={winWidth} />
 
 <!-- ── Back button ──────────────────────────────────────────────────── -->
 {#if visible}
@@ -212,7 +220,7 @@
         <g clip-path="url(#clip-{i})">
           <!-- Layer 1 — wide diffuse halo (gives the ribbon its glow depth) -->
           <path
-            d={ribbonPath(a.x, a.y, b.x, b.y, 55)}
+            d={ribbonPath(a.x, a.y, b.x, b.y, hw1)}
             fill="url(#rg-glow-{i})"
             fill-opacity="0.12"
             filter="url(#blur-lg)"
@@ -220,7 +228,7 @@
 
           <!-- Layer 2 — mid ambient glow -->
           <path
-            d={ribbonPath(a.x, a.y, b.x, b.y, 30)}
+            d={ribbonPath(a.x, a.y, b.x, b.y, hw2)}
             fill="url(#rg-glow-{i})"
             fill-opacity="0.25"
             filter="url(#blur-md)"
@@ -228,21 +236,21 @@
 
           <!-- Layer 3 — main Sankey ribbon body -->
           <path
-            d={ribbonPath(a.x, a.y, b.x, b.y, 18)}
+            d={ribbonPath(a.x, a.y, b.x, b.y, hw3)}
             fill="url(#rg-{i})"
             fill-opacity="0.45"
           />
 
           <!-- Layer 4 — bright inner core (thin ribbon) -->
           <path
-            d={ribbonPath(a.x, a.y, b.x, b.y, 6)}
+            d={ribbonPath(a.x, a.y, b.x, b.y, hw4)}
             fill="url(#rg-{i})"
             fill-opacity="0.65"
           />
 
           <!-- Layer 5 — crisp top edge highlight stroke -->
           <path
-            d={edgePath(a.x, a.y, b.x, b.y, -18)}
+            d={edgePath(a.x, a.y, b.x, b.y, -he)}
             fill="none"
             stroke="url(#rg-{i})"
             stroke-width="1"
@@ -251,7 +259,7 @@
 
           <!-- Layer 6 — crisp bottom edge highlight stroke -->
           <path
-            d={edgePath(a.x, a.y, b.x, b.y, 18)}
+            d={edgePath(a.x, a.y, b.x, b.y, he)}
             fill="none"
             stroke="url(#rg-{i})"
             stroke-width="1"
@@ -438,6 +446,7 @@
 
 <style>
   :global(html) {
+    overflow-x: hidden;
     overflow-y: scroll;
     scroll-behavior: smooth;
   }
@@ -446,7 +455,6 @@
     background: #050010;
     color: #fff;
     font-family: 'Corpta', monospace;
-    overflow-x: hidden;
     height: auto;
     min-height: 100%;
   }
@@ -521,6 +529,7 @@
     padding: 4vh 0 28vh;
     position: relative;
     overflow: visible;
+    touch-action: pan-y;
   }
 
   .connector-svg {
@@ -754,23 +763,17 @@
       font-size: 0.68rem;
     }
 
-    /* Single-column centered — ribbons recalculate from card centers */
+    /* Tighter zigzag — cards are narrower so left+right fit the viewport */
     .zigzag-container {
-      gap: 20vh;
-      padding: 0 1rem;
+      gap: 16vh;
+      padding: 0 0.5rem;
     }
 
-    .row,
-    .row.left,
-    .row.right {
-      justify-content: center;
-      padding-left: 0;
-      padding-right: 0;
-    }
+    .row.left  { padding-left:  1vw; }
+    .row.right { padding-right: 1vw; }
 
     .card {
-      width: calc(100vw - 2rem);
-      max-width: 420px;
+      width: min(56vw, 230px);
     }
 
     .pre-hud-tag,
