@@ -113,7 +113,7 @@
       title: "The Cloud Waste",
       image: "/aws.jpg",
       imageLabel: "AWS Data Center Interior",
-      description: "To understand the invisible side of digital waste, we must look at the infrastructure that keeps the internet alive. Every email sent, video streamed, and AI prompt generated requires physical action. The IT industry's carbon footprint now rivals global aviation, fueled by 'dark data' and physical e-waste. This growing digital cloud demands hyperscale data centers that consume tremendous amounts of electricity and water. <br><br><a href='https://ourworld.unu.edu/en/a-growing-digital-waste-cloud' target='_blank' rel='noopener noreferrer' style='color: #ff9b9b; text-decoration: underline; font-weight: bold;'>Read the UNU Analysis on Digital Waste ↗</a>",
+      description: "To understand the invisible side of digital waste, we must look at the infrastructure that keeps the internet alive. Every email sent, video streamed, and AI prompt generated requires physical action. The IT industry's carbon footprint now rivals global aviation, fueled by 'dark data' and physical e-waste. This growing digital cloud demands hyperscale data centers that consume tremendous amounts of electricity and water. <br><br><a href='https://ourworld.unu.edu/en/a-growing-digital-waste-cloud' target='_blank' rel='noopener noreferrer' style='color: #172eff; text-decoration: underline; font-weight: bold; font-family: Space Grotesk, sans-serif'>Read the UNU Analysis on Digital Waste ↗</a>",
       center: [-122.34, 47.62], 
       zoom: 15, 
       pitch: 50 },
@@ -531,11 +531,21 @@
 
             {#if storyData[activeIndex].id === 2}
               <a
-                class="story-link"
+                class="story-link story-link--impact"
                 href="/digital-footprint"
                 data-sveltekit-reload
               >
                 Explore the Sequence Diagram<span class="arrow">→</span>
+              </a>
+            {/if}
+
+            {#if storyData[activeIndex].id === 4}
+              <a
+                class="story-link story-link--impact"
+                href="/invisible-weight"
+                data-sveltekit-reload
+              >
+                The Invisible Weight<span class="arrow">→</span>
               </a>
             {/if}
           </section>
@@ -725,6 +735,8 @@
     transition: all 0.3s ease; font-size: 0.8rem;
   }
   .story-link:hover { background: #ffc2c2; box-shadow: 0 0 15px rgba(255, 155, 155, 0.4); transform: translateY(-2px); }
+  .story-link--impact { background: #050010; color: #bdffff; border: 1px solid #bdffff; }
+  .story-link--impact:hover { background: #0d0028; box-shadow: 0 0 15px rgba(189, 255, 255, 0.3); }
 
   .top-controls {
     position: fixed; top: calc(40px + 1.25rem); left: 45%; transform: translateX(-50%);
