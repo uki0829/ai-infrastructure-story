@@ -176,8 +176,8 @@
     flex-shrink: 0;
   }
   .badge-dot.live {
-    background: #ef4444;
-    box-shadow: 0 0 5px #ef4444;
+    background: #ff9b9b;
+    box-shadow: 0 0 5px #ff9b9b;
     animation: dot-pulse 1.8s ease-in-out infinite;
   }
   @keyframes dot-pulse {
@@ -190,7 +190,7 @@
     font-weight: 700;
     letter-spacing: 0.22em;
     text-transform: uppercase;
-    color: #bbb;
+    color: rgba(189, 255, 255, 0.5);
   }
 
   /* ── Scrolling viewport ───────────────────────────── */
@@ -255,13 +255,13 @@
   .stat-bytes::after  { content: ')'; }
 
   /* Color themes */
-  .down  { color: #4ade80; }
-  .up    { color: #fb923c; }
-  .muted { color: #9ca3af; }
-  .iface { color: #f3f4f6; }
+  .down  { color: #bdffff; }
+  .up    { color: #ff9b9b; }
+  .muted { color: rgba(189, 255, 255, 0.45); }
+  .iface { color: rgba(189, 255, 255, 0.7); }
 
   .divider {
-    color: rgba(255, 255, 255, 0.12);
+    color: rgba(189, 255, 255, 0.1);
     font-size: 0.85rem;
     padding: 0;
     line-height: 1;

@@ -127,8 +127,9 @@
     { id: 5, title: "Gilroy community fights against Amazon from constructing data center",
       image: "/gilroy-protest.jpg",
       imageLabel: "Amazon Data Center",
-      description: "In Gilroy, California, a community of 60,000 residents is fighting against Amazon's plan to build a data center that would consume 50 megawatts of power and 360,000 gallons of water daily. This grassroots movement highlights the ethical responsibility of tech companies to consider the environmental and social impacts of their infrastructure on local communities.",
+      description: "In Gilroy, California, a community of 60,000 residents is fighting against Amazon's plan to build a data center that would consume 50 megawatts of power and 360,000 gallons of water daily. This grassroots movement highlights the ethical responsibility of tech companies to consider the environmental and social impacts of their infrastructure on local communities. <br><br><a href='https://www.indybay.org/newsitems/2026/01/09/18882659.php' target='_blank' rel='noopener noreferrer' style='color: #172eff; text-decoration: underline; font-weight: bold; font-family: Space Grotesk, sans-serif'>Read more on the community movement↗</a>",
       center: [-121.55, 36.98], zoom: 12, pitch: 50 },
+    
     { id: 6, title: "The institutions",
       image: "/nvidia-ceo.jpg",
       imageLabel: "NVIDIA CEO Jensen Huang",

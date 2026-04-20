@@ -1,6 +1,9 @@
 <script lang="ts">
   import { onMount, onDestroy } from 'svelte';
+  import { fly } from 'svelte/transition';
+  import { PUBLIC_MAPBOX_TOKEN } from '$env/static/public';
   import rawVegaData from '../../data/gpt_query_data.json';
+  import rawDCData from '../../data/datacenter.json';
 
   // ── Real data ─────────────────────────────────────────────────────────────
   // IEA Electricity 2024 report — global data center energy (TWh/year)
@@ -13,10 +16,11 @@
     { year: '2026', twh: 945, projected: true },
   ];
 
-  // Company ESG/Sustainability Reports 2022 — water withdrawals (billion gallons)
+  // Company ESG/Sustainability Reports — water withdrawals (billion gallons)
+  // Amazon: 2023 Sustainability Report (7.7B gal); others: 2022 reports
   const waterData = [
+    { company: 'Amazon',    bg: 7.7 },
     { company: 'Google',    bg: 5.6 },
-    { company: 'Amazon',    bg: 3.7 },
     { company: 'Microsoft', bg: 1.7 },
     { company: 'Meta',      bg: 1.3 },
   ];
@@ -68,7 +72,7 @@
 
   // ── Chart constants ───────────────────────────────────────────────────────
   const MAX_TWH = 945;
-  const MAX_BG  = 5.6;
+  const MAX_BG  = 7.7;
   const BAR_W   = 58;
   const CHART_H = 220;
   const BAR_BASE = 260;
@@ -85,6 +89,104 @@
     `L${QW},${QH} Z`,
   ].join(' ');
 
+  // ── Impact map (Infrastructure Density) ──────────────────────────────────
+  const MAP_DESC = 'Clustered bubbles reveal the gravity wells of US compute infrastructure — dense concentrations formed near cheap power, fiber corridors, and tax incentives. Click any cluster to zoom in and explore individual facilities. These concentrations are not random; they are the result of deliberate policy, economics, and geography.';
+
+  const dcGeoJSON = { type: 'FeatureCollection', features: (rawDCData as any).features };
+
+  let mapContainer: HTMLElement;
+  let mapReady     = $state(false);
+  let mapInitiated = false;
+  let mapInstance: any = null;
+  let hoveredInfo  = $state<{ name: string; operator: string } | null>(null);
+
+  async function initImpactMap() {
+    if (mapInitiated || !mapContainer) return;
+    mapInitiated = true;
+
+    const mb = (await import('mapbox-gl')).default;
+    mb.accessToken = PUBLIC_MAPBOX_TOKEN;
+
+    mapInstance = new mb.Map({
+      container: mapContainer,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-96, 38.5],
+      zoom: 3.5,
+      pitch: 0,
+      attributionControl: false,
+    });
+    mapInstance.addControl(new mb.AttributionControl({ compact: true }), 'bottom-right');
+
+    mapInstance.on('load', () => {
+      mapInstance.addSource('dc-cl', {
+        type: 'geojson', data: dcGeoJSON,
+        cluster: true, clusterMaxZoom: 9, clusterRadius: 50,
+      });
+
+      mapInstance.addLayer({
+        id: 'grav-cl', type: 'circle', source: 'dc-cl',
+        filter: ['has', 'point_count'],
+        paint: {
+          'circle-color': ['step', ['get', 'point_count'],
+            'rgba(189,255,255,0.18)', 5,
+            'rgba(80,200,255,0.28)',  20,
+            'rgba(40,100,255,0.35)', 50,
+            'rgba(255,100,60,0.42)',
+          ],
+          'circle-radius': ['step', ['get', 'point_count'], 16, 5, 26, 20, 38, 50, 52],
+          'circle-stroke-color': ['step', ['get', 'point_count'],
+            'rgba(189,255,255,0.35)', 5,
+            'rgba(80,200,255,0.45)',  20,
+            'rgba(40,100,255,0.5)',   50,
+            'rgba(255,100,60,0.5)',
+          ],
+          'circle-stroke-width': 1.2,
+        },
+      });
+      mapInstance.addLayer({
+        id: 'grav-count', type: 'symbol', source: 'dc-cl',
+        filter: ['has', 'point_count'],
+        layout: {
+          'text-field': '{point_count_abbreviated}',
+          'text-size': 10,
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        },
+        paint: { 'text-color': 'rgba(255,255,255,0.75)' },
+      });
+      mapInstance.addLayer({
+        id: 'grav-pts', type: 'circle', source: 'dc-cl',
+        filter: ['!', ['has', 'point_count']],
+        paint: {
+          'circle-color': '#bdffff',
+          'circle-radius': 3,
+          'circle-opacity': ['interpolate', ['linear'], ['zoom'], 7, 0, 8, 0.65],
+        },
+      });
+
+      mapInstance.on('click', 'grav-cl', (e: any) => {
+        const f = mapInstance.queryRenderedFeatures(e.point, { layers: ['grav-cl'] });
+        (mapInstance.getSource('dc-cl') as any).getClusterExpansionZoom(
+          f[0].properties.cluster_id,
+          (err: any, zoom: number) => { if (!err) mapInstance.easeTo({ center: f[0].geometry.coordinates, zoom }); }
+        );
+      });
+      mapInstance.on('mouseenter', 'grav-cl',  () => { mapInstance.getCanvas().style.cursor = 'pointer'; });
+      mapInstance.on('mouseleave', 'grav-cl',  () => { mapInstance.getCanvas().style.cursor = ''; });
+      mapInstance.on('mouseenter', 'grav-pts', (e: any) => {
+        mapInstance.getCanvas().style.cursor = 'pointer';
+        const p = e.features[0].properties;
+        hoveredInfo = { name: p.name || p.operator || 'Data Center', operator: p.operator || '' };
+      });
+      mapInstance.on('mouseleave', 'grav-pts', () => { mapInstance.getCanvas().style.cursor = ''; hoveredInfo = null; });
+
+      mapReady = true;
+    });
+  }
+
+  $effect(() => {
+    if (visibleSections.has('impact-map') && !mapInitiated) setTimeout(initImpactMap, 80);
+  });
+
   let timerInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
@@ -93,7 +195,10 @@
     requestAnimationFrame(() => { visible = true; });
   });
 
-  onDestroy(() => clearInterval(timerInterval));
+  onDestroy(() => {
+    clearInterval(timerInterval);
+    mapInstance?.remove();
+  });
 
   function fmt(n: number)           { return Math.round(n).toLocaleString(); }
   function fmtDec(n: number, d = 1) { return n.toFixed(d); }
@@ -104,12 +209,18 @@
 
 <svelte:head>
   <title>The Invisible Weight — AI Infrastructure Impact</title>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v3.3.0/mapbox-gl.css" rel="stylesheet" />
 </svelte:head>
 
 <!-- Fixed back button -->
 {#if visible}
-  <a href="/?start=true&step=4" class="back-btn" data-sveltekit-reload>
-    ← Back to Map
+  <a
+    href="/?start=true&step=4"
+    class="back-btn"
+    data-sveltekit-reload
+    in:fly={{ x: -24, duration: 500, delay: 400 }}
+  >
+    <span class="arrow">←</span> Back
   </a>
 {/if}
 
@@ -241,12 +352,12 @@
         <div class="hb-row" style="--delay: {i * 0.1}s">
           <div class="hb-co">{d.company}</div>
           <div class="hb-track">
-            <div class="hb-fill" style="width: {pct}%; transition: width 0.85s cubic-bezier(0.4,0,0.2,1) {i * 0.1}s" />
+            <div class="hb-fill" style="width: {pct}%; transition: width 0.85s cubic-bezier(0.4,0,0.2,1) {i * 0.1}s"></div>
             <span class="hb-val">{d.bg}B gal</span>
           </div>
         </div>
       {/each}
-      <p class="src-note">Source: Company ESG &amp; Sustainability Reports, 2022</p>
+      <p class="src-note">Source: Company ESG &amp; Sustainability Reports — Amazon 2023, others 2022</p>
     </div>
 
     <div class="fact-strip" class:in={visibleSections.has('water')}>
@@ -269,11 +380,57 @@
 
   </section>
 
-  <!-- ══════════════════════════ SECTION 3: CALCULATOR ═════════════════════ -->
+  <!-- ══════════════════════════ SECTION 3: IMPACT MAP ════════════════════ -->
+  <section class="ns" data-section="impact-map" use:observe>
+
+    <div class="st" class:in={visibleSections.has('impact-map')}>
+      <span class="eyebrow">03 — WHERE POWER MEETS PLACE</span>
+      <h2>Infrastructure Density</h2>
+      <p>
+        804 US data centers, clustered to reveal the gravity wells of compute infrastructure.
+        Dense concentrations formed near cheap power, fiber corridors, and favorable tax conditions.
+        Click any cluster to zoom in. Zoom past level 8 to explore individual facilities.
+      </p>
+    </div>
+
+    <div class="map-shell" class:in={visibleSections.has('impact-map')}>
+
+      <!-- Legend -->
+      <div class="map-legend">
+        <span class="leg-end" style="color:#bdffff">Small cluster</span>
+        <div class="leg-bar" style="background: linear-gradient(to right, rgba(189,255,255,0.5), rgba(80,200,255,0.6), rgba(40,100,255,0.7), rgba(255,100,60,0.8))"></div>
+        <span class="leg-end" style="color:#ff9b9b">Large cluster</span>
+        <span class="leg-src">Click cluster to zoom · 804 US facilities</span>
+      </div>
+
+      <!-- Mapbox map -->
+      <div class="map-container" bind:this={mapContainer}>
+        {#if !mapReady}
+          <div class="map-loading">Initializing…</div>
+        {/if}
+      </div>
+
+      <!-- Footer: description + hover tooltip -->
+      <div class="map-footer">
+        <p class="mode-desc">{MAP_DESC}</p>
+        {#if hoveredInfo}
+          <div class="hover-card">
+            <span class="hc-name">{hoveredInfo.name}</span>
+            {#if hoveredInfo.operator}<span class="hc-sub">{hoveredInfo.operator}</span>{/if}
+          </div>
+        {/if}
+      </div>
+
+      <p class="src-note">Data: OpenStreetMap contributors · 804 US facilities</p>
+    </div>
+
+  </section>
+
+  <!-- ══════════════════════════ SECTION 4: CALCULATOR ═════════════════════ -->
   <section class="ns" data-section="calc" use:observe>
 
     <div class="st" class:in={visibleSections.has('calc')}>
-      <span class="eyebrow">03 — YOUR FOOTPRINT</span>
+      <span class="eyebrow">04 — YOUR FOOTPRINT</span>
       <h2>How heavy is your usage?</h2>
       <p>
         The cost of a single query is easy to dismiss. The cost of billions is not.
@@ -326,7 +483,7 @@
   <section class="ns" data-section="growth" use:observe>
 
     <div class="st" class:in={visibleSections.has('growth')}>
-      <span class="eyebrow">04 — THE ACCELERATION</span>
+      <span class="eyebrow">05 — THE ACCELERATION</span>
       <h2>A demand that will not slow</h2>
       <p>
         ChatGPT reached 100 million users in two months — faster than any consumer
@@ -381,7 +538,7 @@
   <section class="ns cta-ns" data-section="cta" use:observe>
 
     <div class="st" class:in={visibleSections.has('cta')}>
-      <span class="eyebrow">05 — WHAT MUST CHANGE</span>
+      <span class="eyebrow">06 — WHAT MUST CHANGE</span>
       <h2>The weight belongs<br>to everyone</h2>
       <p>
         Designers, engineers, product teams, and policymakers must confront the physical
@@ -412,30 +569,32 @@
   /* ── Back button ──────────────────────────────────────────────── */
   .back-btn {
     position: fixed;
-    top: 1.25rem;
+    top: calc(40px + 0.75rem);
     left: 1.25rem;
-    z-index: 300;
+    z-index: 200;
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.5rem;
     color: #bdffff;
     text-decoration: none;
-    font-family: 'IBM Plex Mono', monospace;
-    font-size: 0.65rem;
+    font-family: 'Corpta', monospace;
+    font-size: 0.7rem;
     letter-spacing: 2px;
     text-transform: uppercase;
-    background: rgba(5, 0, 16, 0.85);
-    backdrop-filter: blur(14px);
-    -webkit-backdrop-filter: blur(14px);
+    background: rgba(5, 0, 16, 0.75);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border: 1px solid rgba(189, 255, 255, 0.18);
     border-radius: 8px;
-    padding: 0.5rem 1rem;
-    transition: border-color 0.25s, box-shadow 0.25s;
+    padding: 0.55rem 1rem;
+    transition: gap 0.25s, border-color 0.25s, box-shadow 0.25s;
   }
   .back-btn:hover {
-    border-color: rgba(189, 255, 255, 0.5);
-    box-shadow: 0 0 18px rgba(189, 255, 255, 0.12);
+    gap: 0.85rem;
+    border-color: rgba(189, 255, 255, 0.45);
+    box-shadow: 0 0 16px rgba(189, 255, 255, 0.12);
   }
+  .arrow { font-size: 0.85rem; line-height: 1; }
 
   /* ── Page layout ──────────────────────────────────────────────── */
   .page {
@@ -896,6 +1055,114 @@
   }
 
   /* ── Mobile ───────────────────────────────────────────────────── */
+  /* ── Impact map section ──────────────────────────────────────────── */
+  .map-shell {
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.7s ease 0.18s, transform 0.7s ease 0.18s;
+    border: 1px solid rgba(189,255,255,0.1);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .map-shell.in { opacity: 1; transform: translateY(0); }
+
+  /* Inline legend bar */
+  .map-legend {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.65rem 1.25rem;
+    background: rgba(5,0,16,0.9);
+    border-bottom: 1px solid rgba(189,255,255,0.05);
+    flex-wrap: wrap;
+  }
+  .leg-end {
+    font-size: 0.55rem;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+    white-space: nowrap;
+  }
+  .leg-bar {
+    flex: 1;
+    height: 5px;
+    border-radius: 3px;
+    min-width: 60px;
+    max-width: 220px;
+  }
+  .leg-src {
+    font-size: 0.5rem;
+    color: #2a2a3a;
+    font-family: 'IBM Plex Mono', monospace;
+    margin-left: auto;
+  }
+
+  .map-container {
+    position: relative;
+    height: 460px;
+    background: #050010;
+  }
+
+  .map-loading {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: 'IBM Plex Mono', monospace;
+    font-size: 0.6rem;
+    letter-spacing: 3px;
+    color: #222230;
+    text-transform: uppercase;
+  }
+
+  .map-footer {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    background: rgba(5,0,16,0.96);
+    border-top: 1px solid rgba(189,255,255,0.05);
+    min-height: 3.5rem;
+    flex-wrap: wrap;
+  }
+  .mode-desc {
+    font-size: 0.68rem;
+    color: #333344;
+    font-family: 'Space Grotesk', sans-serif;
+    line-height: 1.65;
+    margin: 0;
+    flex: 1;
+    max-width: 540px;
+  }
+
+  .hover-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    background: rgba(189,255,255,0.04);
+    border: 1px solid rgba(189,255,255,0.14);
+    border-radius: 8px;
+    padding: 0.6rem 0.9rem;
+    min-width: 160px;
+    max-width: 220px;
+    flex-shrink: 0;
+  }
+  .hc-name {
+    font-size: 0.62rem;
+    color: #bdffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .hc-sub {
+    font-size: 0.52rem;
+    color: #444455;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1px;
+  }
   @media (max-width: 640px) {
     .page { padding: 5rem 1.25rem 7rem; gap: 6rem; }
     h1 { font-size: 2.3rem; }
@@ -906,5 +1173,7 @@
     .fact-strip { grid-template-columns: 1fr; }
     .hb-co { width: 64px; font-size: 0.55rem; }
     .calc { padding: 1.5rem; }
+    .map-container { height: 320px; }
+    .map-footer { flex-direction: column; }
   }
 </style>
