@@ -4,7 +4,19 @@
       "Bash(npm run *)",
       "Bash(npm install *)",
       "Bash(npm uninstall *)",
-      "Bash(npx svelte-check *)"
+      "Bash(npx svelte-check *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s http://localhost:5181/invisible-weight)",
+      "Bash(open *)",
+      "Bash(curl -s \"http://localhost:5181/invisible-weight\")",
+      "Bash(screencapture -x /tmp/city-map-test.png)",
+      "Bash(node *)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5182/invisible-weight)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:5173/)",
+      "Bash(curl *)",
+      "Bash(python3 *)",
+      "WebFetch(domain:www.eia.gov)",
+      "WebSearch"
     ]
   }
 }

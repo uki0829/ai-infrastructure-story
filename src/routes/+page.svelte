@@ -20,6 +20,7 @@
     website?: string;
     'building:levels'?: string;
     'addr:city'?: string;
+    'addr:state'?: string;
     [key: string]: any;
   }
   interface DataCenterFeature {
@@ -66,6 +67,22 @@
     }
   });
 
+  const STATE_NAME_TO_ABBR: Record<string, string> = {
+    "Alabama":"AL","Alaska":"AK","Arizona":"AZ","Arkansas":"AR","California":"CA",
+    "Colorado":"CO","Connecticut":"CT","Delaware":"DE","Florida":"FL","Georgia":"GA",
+    "Hawaii":"HI","Idaho":"ID","Illinois":"IL","Indiana":"IN","Iowa":"IA",
+    "Kansas":"KS","Kentucky":"KY","Louisiana":"LA","Maine":"ME","Maryland":"MD",
+    "Massachusetts":"MA","Michigan":"MI","Minnesota":"MN","Mississippi":"MS","Missouri":"MO",
+    "Montana":"MT","Nebraska":"NE","Nevada":"NV","New Hampshire":"NH","New Jersey":"NJ",
+    "New Mexico":"NM","New York":"NY","North Carolina":"NC","North Dakota":"ND","Ohio":"OH",
+    "Oklahoma":"OK","Oregon":"OR","Pennsylvania":"PA","Rhode Island":"RI","South Carolina":"SC",
+    "South Dakota":"SD","Tennessee":"TN","Texas":"TX","Utah":"UT","Vermont":"VT",
+    "Virginia":"VA","Washington":"WA","West Virginia":"WV","Wisconsin":"WI","Wyoming":"WY",
+    "District of Columbia":"DC"
+  };
+
+  let selectedState = $state<string | null>(null);
+
   const rawFeatures: DataCenterFeature[] = (datacenterData as any).features || [];
   // FIXED: add _idx to every feature so we have a guaranteed unique ID
   // even when multiple facilities share the same name
@@ -78,8 +95,13 @@
   let filteredDatacenters = $derived(
     datacenters.filter(dc => {
       const term = searchQuery.toLowerCase();
-      return dc.properties.name!.toLowerCase().includes(term) ||
-             dc.properties.operator!.toLowerCase().includes(term);
+      if (!dc.properties.name!.toLowerCase().includes(term) &&
+          !dc.properties.operator!.toLowerCase().includes(term)) return false;
+      if (selectedState) {
+        const abbr = STATE_NAME_TO_ABBR[selectedState];
+        if (abbr && dc.properties['addr:state'] !== abbr) return false;
+      }
+      return true;
     })
   );
 
@@ -128,7 +150,7 @@
       image: "/gilroy-protest.jpg",
       imageLabel: "Amazon Data Center",
       description: "In Gilroy, California, a community of 60,000 residents is fighting against Amazon's plan to build a data center that would consume 50 megawatts of power and 360,000 gallons of water daily. This grassroots movement highlights the ethical responsibility of tech companies to consider the environmental and social impacts of their infrastructure on local communities. <br><br><a href='https://www.indybay.org/newsitems/2026/01/09/18882659.php' target='_blank' rel='noopener noreferrer' style='color: #172eff; text-decoration: underline; font-weight: bold; font-family: Space Grotesk, sans-serif'>Read more on the community movement↗</a>",
-      center: [-121.55, 36.98], zoom: 12, pitch: 50 },
+      center: [-121.559192, 37.017525], zoom: 15, pitch: 50 },
     
     { id: 6, title: "The institutions",
       image: "/nvidia-ceo.jpg",
@@ -158,6 +180,13 @@
   function resetView()   { selectedFeature = null; connectOnButtonPress(); }
   function reopenStory() { showStory = true; connectOnButtonPress(); }
   function clearSearch() { searchQuery = ""; connectOnButtonPress(); }
+
+  function handleStateClick(stateName: string) {
+    selectedState = selectedState === stateName ? null : stateName;
+    selectedFeature = null;
+    showStory = false;
+  }
+  function clearStateFilter() { selectedState = null; }
 
   // ── Footprint tracker functions ──
   // Flow: SET LOCATION → click map → preview → CONFIRM → mode stays ON → buttons draw lines
@@ -294,6 +323,8 @@
   onLineDrawn={handleLineDrawn}
   onConfirm={confirmLocation}
   onCancel={cancelPending}
+  {selectedState}
+  onStateClick={handleStateClick}
 />
 
 {#if !isStarted}
@@ -439,7 +470,17 @@
         <button class="reopen-btn" onclick={reopenStory}>Return to Story</button>
       {/if}
 
-      <p class="count-label">Showing {filteredDatacenters.length} facilities</p>
+      {#if selectedState}
+        <div class="state-filter-badge" transition:fade>
+          <div class="sf-info">
+            <span class="sf-label">STATE FILTER</span>
+            <span class="sf-name">{selectedState}</span>
+          </div>
+          <button class="sf-clear" onclick={clearStateFilter}>✕ CLEAR</button>
+        </div>
+      {/if}
+
+      <p class="count-label">Showing {filteredDatacenters.length} facilities{selectedState ? ` in ${STATE_NAME_TO_ABBR[selectedState] || selectedState}` : ''}</p>
 
       <div class="list">
         {#each filteredDatacenters as dc}
@@ -619,6 +660,17 @@
   .list button { background: #222; border: 1px solid #333; color: #aaa; padding: 5px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 4px; }
   .list button.active { background: #ff9b9b; color: #000; border-color: #ff9b9b; font-weight: bold; }
   .reopen-btn { width: 100%; background: #333; color: white; border: none; padding: 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: 'Space Grotesk', sans-serif; margin: 0.3rem 0; }
+
+  .state-filter-badge {
+    display: flex; align-items: center; justify-content: space-between;
+    background: rgba(189,255,255,0.07); border: 1px solid rgba(189,255,255,0.3);
+    border-radius: 8px; padding: 0.45rem 0.75rem; margin: 0.4rem 0 0.2rem;
+  }
+  .sf-info { display: flex; flex-direction: column; gap: 1px; }
+  .sf-label { font-size: 0.45rem; color: rgba(189,255,255,0.5); letter-spacing: 2px; font-family: 'Corpta', monospace; }
+  .sf-name { font-size: 0.68rem; color: #bdffff; font-family: 'Corpta', monospace; }
+  .sf-clear { background: none; border: none; color: #ff9b9b; font-size: 0.55rem; cursor: pointer; padding: 0; font-family: 'Space Grotesk', sans-serif; letter-spacing: 0.5px; }
+  .sf-clear:hover { text-decoration: underline; }
 
   /* Sidebar header row with close button */
   .sidebar-header-row { display: flex; align-items: flex-start; justify-content: space-between; }

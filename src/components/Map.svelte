@@ -32,8 +32,10 @@
     onSelect,
     onMapClick,
     onLineDrawn,
-    onConfirm, // CHANGED: added onConfirm prop
-    onCancel, // CHANGED: added onCancel prop
+    onConfirm,
+    onCancel,
+    selectedState = null as string | null,
+    onStateClick,
     actions = $bindable() as
       | {
           drawLineToDC: (
@@ -55,8 +57,10 @@
     onSelect?: (feature: any) => void;
     onMapClick?: (coords: [number, number]) => void;
     onLineDrawn?: (dcId: string) => void;
-    onConfirm?: () => void; // CHANGED: added onConfirm to type block
-    onCancel?: () => void; // CHANGED: added onCancel to type block
+    onConfirm?: () => void;
+    onCancel?: () => void;
+    selectedState?: string | null;
+    onStateClick?: (stateName: string) => void;
     actions?: {
       drawLineToDC: (
         userCoords: [number, number],

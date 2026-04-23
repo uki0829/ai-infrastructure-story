@@ -4,6 +4,7 @@
   import { PUBLIC_MAPBOX_TOKEN } from '$env/static/public';
   import rawVegaData from '../../data/gpt_query_data.json';
   import rawDCData from '../../data/datacenter.json';
+  import rawCensusStates from '../../data/gz_2010_us_040_00_500k.json';
 
   // ── Real data ─────────────────────────────────────────────────────────────
   // IEA Electricity 2024 report — global data center energy (TWh/year)
@@ -187,6 +188,212 @@
     if (visibleSections.has('impact-map') && !mapInitiated) setTimeout(initImpactMap, 80);
   });
 
+  // ── State electricity map ─────────────────────────────────────────────────
+  // Per query energy: 0.003 kWh (Goldman Sachs Research, 2024)
+  // Per million queries: 3 MWh · Source: EIA State Electricity Profiles 2022
+  const KWH_PER_QUERY = 0.003;
+
+  // Daily electricity per state in GWh (source values in kWh ÷ 1,000,000)
+  // Sorted ascending — cumulative thresholds drive the map light-up sequence
+  // Total: 10,680 GWh/day = 10.68 TWh/day across all 50 states
+  const usaStates = [
+    { name: 'Vermont',        abbr: 'VT', lat: 44.0,  lon: -72.7,  gwhDay:    20 },
+    { name: 'Alaska',         abbr: 'AK', lat: 64.2,  lon: -153.4, gwhDay:    20 },
+    { name: 'Hawaii',         abbr: 'HI', lat: 20.8,  lon: -156.3, gwhDay:    25 },
+    { name: 'Delaware',       abbr: 'DE', lat: 39.0,  lon: -75.5,  gwhDay:    30 },
+    { name: 'Rhode Island',   abbr: 'RI', lat: 41.7,  lon: -71.5,  gwhDay:    30 },
+    { name: 'New Hampshire',  abbr: 'NH', lat: 43.7,  lon: -71.6,  gwhDay:    35 },
+    { name: 'South Dakota',   abbr: 'SD', lat: 44.4,  lon: -100.2, gwhDay:    35 },
+    { name: 'Maine',          abbr: 'ME', lat: 45.3,  lon: -69.0,  gwhDay:    40 },
+    { name: 'Wyoming',        abbr: 'WY', lat: 43.0,  lon: -107.6, gwhDay:    40 },
+    { name: 'Montana',        abbr: 'MT', lat: 46.9,  lon: -110.4, gwhDay:    45 },
+    { name: 'North Dakota',   abbr: 'ND', lat: 47.5,  lon: -100.5, gwhDay:    50 },
+    { name: 'Idaho',          abbr: 'ID', lat: 44.4,  lon: -114.5, gwhDay:    70 },
+    { name: 'New Mexico',     abbr: 'NM', lat: 34.5,  lon: -106.1, gwhDay:    90 },
+    { name: 'Nebraska',       abbr: 'NE', lat: 41.5,  lon: -99.9,  gwhDay:    90 },
+    { name: 'West Virginia',  abbr: 'WV', lat: 38.9,  lon: -80.4,  gwhDay:    90 },
+    { name: 'Connecticut',    abbr: 'CT', lat: 41.6,  lon: -72.7,  gwhDay:   110 },
+    { name: 'Arkansas',       abbr: 'AR', lat: 34.8,  lon: -92.2,  gwhDay:   110 },
+    { name: 'Nevada',         abbr: 'NV', lat: 39.3,  lon: -116.6, gwhDay:   110 },
+    { name: 'Iowa',           abbr: 'IA', lat: 42.0,  lon: -93.5,  gwhDay:   120 },
+    { name: 'Kansas',         abbr: 'KS', lat: 38.5,  lon: -98.4,  gwhDay:   120 },
+    { name: 'Utah',           abbr: 'UT', lat: 39.3,  lon: -111.6, gwhDay:   120 },
+    { name: 'Mississippi',    abbr: 'MS', lat: 32.7,  lon: -89.7,  gwhDay:   140 },
+    { name: 'Oregon',         abbr: 'OR', lat: 44.0,  lon: -120.6, gwhDay:   160 },
+    { name: 'Maryland',       abbr: 'MD', lat: 39.0,  lon: -76.8,  gwhDay:   160 },
+    { name: 'Oklahoma',       abbr: 'OK', lat: 35.6,  lon: -97.5,  gwhDay:   180 },
+    { name: 'Kentucky',       abbr: 'KY', lat: 37.7,  lon: -85.3,  gwhDay:   190 },
+    { name: 'Colorado',       abbr: 'CO', lat: 39.0,  lon: -105.5, gwhDay:   200 },
+    { name: 'Wisconsin',      abbr: 'WI', lat: 44.3,  lon: -89.8,  gwhDay:   200 },
+    { name: 'Massachusetts',  abbr: 'MA', lat: 42.3,  lon: -71.8,  gwhDay:   210 },
+    { name: 'Minnesota',      abbr: 'MN', lat: 46.3,  lon: -94.3,  gwhDay:   210 },
+    { name: 'Missouri',       abbr: 'MO', lat: 38.5,  lon: -92.5,  gwhDay:   210 },
+    { name: 'South Carolina', abbr: 'SC', lat: 33.8,  lon: -80.9,  gwhDay:   210 },
+    { name: 'Alabama',        abbr: 'AL', lat: 32.8,  lon: -86.8,  gwhDay:   230 },
+    { name: 'Louisiana',      abbr: 'LA', lat: 31.0,  lon: -91.8,  gwhDay:   240 },
+    { name: 'Arizona',        abbr: 'AZ', lat: 34.3,  lon: -111.5, gwhDay:   250 },
+    { name: 'Washington',     abbr: 'WA', lat: 47.4,  lon: -120.5, gwhDay:   260 },
+    { name: 'New Jersey',     abbr: 'NJ', lat: 40.1,  lon: -74.4,  gwhDay:   270 },
+    { name: 'Tennessee',      abbr: 'TN', lat: 35.9,  lon: -86.4,  gwhDay:   280 },
+    { name: 'Indiana',        abbr: 'IN', lat: 39.8,  lon: -86.1,  gwhDay:   290 },
+    { name: 'Virginia',       abbr: 'VA', lat: 37.8,  lon: -78.2,  gwhDay:   300 },
+    { name: 'Michigan',       abbr: 'MI', lat: 44.2,  lon: -85.0,  gwhDay:   310 },
+    { name: 'North Carolina', abbr: 'NC', lat: 35.6,  lon: -79.4,  gwhDay:   320 },
+    { name: 'Georgia',        abbr: 'GA', lat: 32.7,  lon: -83.4,  gwhDay:   330 },
+    { name: 'Ohio',           abbr: 'OH', lat: 40.4,  lon: -82.7,  gwhDay:   350 },
+    { name: 'Illinois',       abbr: 'IL', lat: 40.0,  lon: -89.2,  gwhDay:   380 },
+    { name: 'Pennsylvania',   abbr: 'PA', lat: 41.2,  lon: -77.2,  gwhDay:   400 },
+    { name: 'New York',       abbr: 'NY', lat: 42.9,  lon: -75.5,  gwhDay:   420 },
+    { name: 'Florida',        abbr: 'FL', lat: 27.7,  lon: -81.7,  gwhDay:   630 },
+    { name: 'California',     abbr: 'CA', lat: 37.2,  lon: -119.4, gwhDay:   770 },
+    { name: 'Texas',          abbr: 'TX', lat: 31.5,  lon: -99.3,  gwhDay:  1180 },
+  ];
+
+  // Cumulative GWh thresholds — a state lights up when the slider's total
+  // energy reaches its cumulative sum (Vermont first at 20 GWh, Texas last at 10,680 GWh)
+  const statesWithCum = (() => {
+    let cum = 0;
+    return usaStates.map(s => { cum += s.gwhDay; return { ...s, cumGwh: cum }; });
+  })();
+  const TOTAL_GWH = statesWithCum[statesWithCum.length - 1].cumGwh; // 10,680
+  // cumThreshold lookup for boundaryGeoJSON (by state name)
+  const cumThresholdMap = new Map(statesWithCum.map(s => [s.name, s.cumGwh]));
+
+  // Log slider: 0–100 → 10^(2 + v × SLIDER_K/100) million queries
+  // SLIDER_K chosen so slider=100 → stateTotalGwh = TOTAL_GWH (10,680 GWh = 10.68 TWh)
+  // stateTotalGwh = stateQueriesM × KWH_PER_QUERY  (GWh, since M×0.003 = GWh)
+  // At v=31: ~2.5B queries (ChatGPT daily, 7.5 GWh) | v=100: all 50 states lit
+  const SLIDER_K = Math.log10(TOTAL_GWH / KWH_PER_QUERY) - 2; // ≈ 4.5514
+  let stateSlider   = $state(31);
+  let stateQueriesM = $derived(Math.round(Math.pow(10, 2 + stateSlider * SLIDER_K / 100)));
+
+  // Energy in GWh: stateQueriesM [M] × 0.003 kWh/query × 10^6 queries/M ÷ 10^6 kWh/GWh
+  let stateTotalGwh = $derived(stateQueriesM * KWH_PER_QUERY);
+
+  // stateQueriesM is in millions: 1T = 1,000,000M, 1B = 1,000M
+  let stateDisplayNum = $derived(
+    stateQueriesM >= 1_000_000
+      ? `${(stateQueriesM / 1_000_000).toFixed(stateQueriesM >= 10_000_000 ? 0 : 2)}`
+      : stateQueriesM >= 1000
+        ? `${(stateQueriesM / 1000).toFixed(stateQueriesM >= 10_000 ? 0 : 1)}`
+        : stateQueriesM.toLocaleString()
+  );
+  let stateDisplayUnit = $derived(
+    stateQueriesM >= 1_000_000 ? 'trillion' :
+    stateQueriesM >= 1000      ? 'billion'  : 'million'
+  );
+  // Energy display: GWh below 1,000; TWh above
+  let stateEnergyFmt = $derived(
+    stateTotalGwh >= 1000 ? `${(stateTotalGwh / 1000).toFixed(2)} TWh` :
+    stateTotalGwh >= 1    ? `${stateTotalGwh.toFixed(1)} GWh`          :
+                            `${(stateTotalGwh * 1000).toFixed(0)} MWh`
+  );
+
+  // States light up cumulatively: each state's threshold = sum of all smaller states + itself
+  let litStates = $derived(statesWithCum.filter(s => stateTotalGwh >= s.cumGwh));
+  let litCount  = $derived(litStates.length);
+
+  // Next state to light up is the first whose cumulative threshold hasn't been reached
+  let nextState      = $derived(statesWithCum.find(s => stateTotalGwh < s.cumGwh) ?? null);
+  let nextStateNeedM = $derived(nextState ? Math.ceil(nextState.cumGwh / KWH_PER_QUERY) : null);
+  let nextStateDiffM = $derived(nextStateNeedM !== null ? nextStateNeedM - stateQueriesM : null);
+  let nextDiffFmt    = $derived(
+    nextStateDiffM === null ? '' :
+    nextStateDiffM >= 1_000_000
+      ? `+${(nextStateDiffM / 1_000_000).toFixed(1)}T`
+      : nextStateDiffM >= 1000
+        ? `+${(nextStateDiffM / 1000).toFixed(1)}B`
+        : `+${nextStateDiffM.toLocaleString()}M`
+  );
+
+  let stateMapContainer: HTMLElement;
+  let stateMapInstance: any = null;
+  let stateMapInitiated = false;
+  let stateMapReady     = $state(false);
+
+  let boundaryGeoJSON = $derived({
+    type: 'FeatureCollection' as const,
+    features: (rawCensusStates as any).features.map((f: any) => ({
+      ...f,
+      properties: {
+        ...f.properties,
+        lit: stateTotalGwh >= (cumThresholdMap.get(f.properties.NAME) ?? Infinity) ? 1 : 0,
+      }
+    }))
+  });
+
+  let centroidGeoJSON = $derived({
+    type: 'FeatureCollection' as const,
+    features: statesWithCum.map(s => ({
+      type: 'Feature' as const,
+      geometry: { type: 'Point' as const, coordinates: [s.lon, s.lat] as [number, number] },
+      properties: { abbr: s.abbr, lit: stateTotalGwh >= s.cumGwh ? 1 : 0 }
+    }))
+  });
+
+  async function initStateMap() {
+    if (stateMapInitiated || !stateMapContainer) return;
+    stateMapInitiated = true;
+    const mb = (await import('mapbox-gl')).default;
+    mb.accessToken = PUBLIC_MAPBOX_TOKEN;
+    stateMapInstance = new mb.Map({
+      container: stateMapContainer,
+      style: 'mapbox://styles/mapbox/dark-v11',
+      center: [-97, 38.5], zoom: 3.2, pitch: 0, attributionControl: false,
+    });
+    stateMapInstance.addControl(new mb.AttributionControl({ compact: true }), 'bottom-right');
+    stateMapInstance.on('load', () => {
+      stateMapInstance.addSource('state-bounds', { type: 'geojson', data: boundaryGeoJSON });
+      stateMapInstance.addSource('state-pts',    { type: 'geojson', data: centroidGeoJSON });
+
+      // Outer glow fill
+      stateMapInstance.addLayer({ id: 'sb-glow', type: 'fill', source: 'state-bounds', paint: {
+        'fill-color': '#bdffff',
+        'fill-opacity': ['case', ['>', ['get', 'lit'], 0], 0.07, 0],
+        'fill-opacity-transition': { duration: 500, delay: 0 },
+      }});
+
+      // Main fill
+      stateMapInstance.addLayer({ id: 'sb-fill', type: 'fill', source: 'state-bounds', paint: {
+        'fill-color': ['case', ['>', ['get', 'lit'], 0], '#bdffff', '#0d0d24'],
+        'fill-opacity': ['case', ['>', ['get', 'lit'], 0], 0.18, 0.4],
+        'fill-opacity-transition': { duration: 500, delay: 0 },
+      }});
+
+      // Border
+      stateMapInstance.addLayer({ id: 'sb-line', type: 'line', source: 'state-bounds', paint: {
+        'line-color': ['case', ['>', ['get', 'lit'], 0], 'rgba(189,255,255,0.85)', 'rgba(189,255,255,0.07)'],
+        'line-width': ['case', ['>', ['get', 'lit'], 0], 1.5, 0.5],
+      }});
+
+      // State abbreviation labels
+      stateMapInstance.addLayer({ id: 'sb-lbl', type: 'symbol', source: 'state-pts',
+        layout: {
+          'text-field': ['get', 'abbr'],
+          'text-size': 9,
+          'text-font': ['DIN Offc Pro Medium', 'Arial Unicode MS Bold'],
+        },
+        paint: {
+          'text-color': ['case', ['>', ['get', 'lit'], 0], 'rgba(189,255,255,0.85)', 'rgba(40,40,70,0.45)'],
+          'text-halo-color': 'rgba(0,0,0,0.5)', 'text-halo-width': 1,
+        }
+      });
+
+      stateMapReady = true;
+    });
+  }
+
+  $effect(() => {
+    if (visibleSections.has('calc') && !stateMapInitiated) setTimeout(initStateMap, 100);
+  });
+
+  $effect(() => {
+    if (stateMapReady) {
+      (stateMapInstance?.getSource('state-bounds') as any)?.setData(boundaryGeoJSON);
+      (stateMapInstance?.getSource('state-pts') as any)?.setData(centroidGeoJSON);
+    }
+  });
+
   let timerInterval: ReturnType<typeof setInterval>;
 
   onMount(() => {
@@ -198,6 +405,7 @@
   onDestroy(() => {
     clearInterval(timerInterval);
     mapInstance?.remove();
+    stateMapInstance?.remove();
   });
 
   function fmt(n: number)           { return Math.round(n).toLocaleString(); }
@@ -426,13 +634,130 @@
 
   </section>
 
-  <!-- ══════════════════════════ SECTION 4: CALCULATOR ═════════════════════ -->
+  <!-- ══════════════════════════ SECTION 4: STATE ELECTRICITY MAP ══════════ -->
   <section class="ns" data-section="calc" use:observe>
 
     <div class="st" class:in={visibleSections.has('calc')}>
-      <span class="eyebrow">04 — YOUR FOOTPRINT</span>
-      <h2>How heavy is your usage?</h2>
+      <span class="eyebrow">04 — HOW HEAVY IS YOUR USAGE?</span>
+      <h2>How many states does your query volume power?</h2>
       <p>
+        Every AI query draws real electricity from the grid. At collective scale,
+        billions of queries become gigawatt-hours — enough to power entire states
+        for a day. Drag the slider to see which US states light up as query volume grows.
+      </p>
+    </div>
+
+    <!-- ── State map slider + visualization ───────────────────────────────── -->
+    <div class="city-viz" class:in={visibleSections.has('calc')}>
+
+      <!-- Slider header -->
+      <div class="cv-slider-block">
+        <div class="cv-slider-top">
+          <span class="slider-label">Query volume</span>
+          <div class="cv-query-display">
+            <span class="cv-query-num">{stateDisplayNum}</span>
+            <span class="cv-query-unit">{stateDisplayUnit} queries</span>
+          </div>
+        </div>
+
+        <!-- Log-scale slider with reference markers -->
+        <div class="cv-slider-wrap">
+          <input type="range" min="0" max="100" bind:value={stateSlider} class="range" />
+          <!-- ChatGPT daily ≈ 2.5B → 7.5 GWh → v≈31 with SLIDER_K=4.55 -->
+          <div class="cv-ref-marker" style="left: 31%">
+            <div class="cv-ref-line"></div>
+            <span class="cv-ref-label">ChatGPT daily</span>
+          </div>
+          <!-- Slider max = all 50 states = 10,680 GWh = 10.68 TWh -->
+          <div class="cv-ref-marker cv-ref-marker--all" style="left: 96%">
+            <div class="cv-ref-line"></div>
+            <span class="cv-ref-label">All 50 states</span>
+          </div>
+        </div>
+
+        <div class="cv-scale-marks">
+          <span>100M</span><span>1B</span><span>10B</span><span>100B</span><span>1T</span><span>3.6T</span>
+        </div>
+      </div>
+
+      <!-- Energy equivalence banner -->
+      <div class="cv-equiv-row">
+        <div class="cv-equiv-item">
+          <span class="cv-equiv-val">{stateEnergyFmt}</span>
+          <span class="cv-equiv-lbl">electricity consumed</span>
+        </div>
+        <div class="cv-equiv-sep">→</div>
+        <div class="cv-equiv-item">
+          <span class="cv-equiv-val">{litCount} <span class="cv-of-total">/ {usaStates.length}</span></span>
+          <span class="cv-equiv-lbl">states powered for a day</span>
+        </div>
+        <div class="cv-equiv-sep">→</div>
+        <div class="cv-equiv-item">
+          {#if nextState}
+            <span class="cv-equiv-val coral">{nextDiffFmt}</span>
+            <span class="cv-equiv-lbl">more to power {nextState.name}</span>
+          {:else}
+            <span class="cv-equiv-val" style="color:#bdffff">All 50 ✓</span>
+            <span class="cv-equiv-lbl">all states powered</span>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Unit conversion reference -->
+      <div class="cv-unit-ref">
+        <span class="cv-unit-item"><strong>1 TWh</strong> = 1,000 GWh</span>
+        <span class="cv-unit-sep">·</span>
+        <span class="cv-unit-item"><strong>1 GWh</strong> = 1,000 MWh</span>
+        <span class="cv-unit-sep">·</span>
+        <span class="cv-unit-item"><strong>1 MWh</strong> = 1,000 kWh</span>
+        <span class="cv-unit-sep">·</span>
+        <span class="cv-unit-item">US total: <strong>10,680 GWh</strong> / day = <strong>10.68 TWh</strong> / day</span>
+      </div>
+
+      <!-- Mapbox state electricity map -->
+      <div class="cv-map-shell">
+        <div class="cv-map-legend">
+          <div class="cv-leg-item">
+            <div class="cv-leg-dot lit"></div>
+            <span>Powered ({litCount})</span>
+          </div>
+          <div class="cv-leg-item">
+            <div class="cv-leg-dot"></div>
+            <span>Not yet ({usaStates.length - litCount})</span>
+          </div>
+          <span class="cv-leg-note">State fill = daily electricity met by query volume</span>
+        </div>
+
+        <div class="cv-map-container" bind:this={stateMapContainer}>
+          {#if !stateMapReady}
+            <div class="map-loading">Initializing map…</div>
+          {/if}
+        </div>
+      </div>
+
+      <!-- Lit states chips -->
+      {#if litCount > 0}
+        <div class="cv-lit-list">
+          <span class="cv-lit-label">Powered today:</span>
+          <div class="cv-chips">
+            {#each litStates as s}
+              <div class="cv-chip">
+                <span class="cv-chip-name">{s.name}</span>
+                <span class="cv-chip-mwh">{s.gwhDay} GWh/day</span>
+              </div>
+            {/each}
+          </div>
+        </div>
+      {:else}
+        <p class="cv-start-hint">Drag the slider right to start powering states →</p>
+      {/if}
+
+    </div>
+
+    <!-- ── Personal footprint calculator ─────────────────────────────────── -->
+    <div class="st" class:in={visibleSections.has('calc')} style="margin-top: 1rem">
+      <span class="eyebrow" style="margin-top:0">YOUR PERSONAL FOOTPRINT</span>
+      <p style="margin-top:0.5rem">
         The cost of a single query is easy to dismiss. The cost of billions is not.
         Drag the slider to see what your AI habits extract from the planet each year.
       </p>
@@ -475,6 +800,8 @@
     </div>
     <p class="src-note" style="margin-top: 0.75rem">
       Per query: 0.003 kWh (Goldman Sachs Research, 2024) · 20 ml water (UC Riverside, 2023) · 0.386 kg CO₂/kWh (US EPA, 2022)
+      · State daily electricity in GWh — total 10,680 GWh/day = 10.68 TWh/day across all 50 states
+      · States light up cumulatively as query energy accumulates; slider max = total US daily consumption
     </p>
 
   </section>
@@ -1054,6 +1381,231 @@
     border-color: rgba(255,155,155,0.5);
   }
 
+  /* ── City electricity visualization ─────────────────────────────────────── */
+  .city-viz {
+    display: flex;
+    flex-direction: column;
+    gap: 1.75rem;
+    opacity: 0;
+    transform: translateY(18px);
+    transition: opacity 0.7s ease 0.18s, transform 0.7s ease 0.18s;
+  }
+  .city-viz.in { opacity: 1; transform: translateY(0); }
+
+  .cv-slider-block { display: flex; flex-direction: column; gap: 0.75rem; }
+
+  .cv-slider-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+  }
+
+  .cv-query-display { text-align: right; line-height: 1; }
+  .cv-query-num {
+    font-size: clamp(1.8rem, 4vw, 2.8rem);
+    color: #bdffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .cv-query-unit {
+    display: block;
+    font-size: 0.52rem;
+    letter-spacing: 2.5px;
+    color: #383848;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    margin-top: 0.3rem;
+  }
+
+  .cv-slider-wrap { position: relative; padding-bottom: 1.6rem; }
+  .cv-slider-wrap .range { width: 100%; }
+
+  .cv-ref-marker {
+    position: absolute;
+    bottom: 0;
+    transform: translateX(-50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.2rem;
+    pointer-events: none;
+  }
+  .cv-ref-line {
+    width: 1px;
+    height: 10px;
+    background: rgba(255, 155, 155, 0.5);
+  }
+  .cv-ref-label {
+    font-size: 0.45rem;
+    letter-spacing: 1.5px;
+    color: #ff9b9b;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+    white-space: nowrap;
+  }
+
+  .cv-scale-marks {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.5rem;
+    color: #2a2a3a;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+
+  .cv-equiv-row {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    background: rgba(189, 255, 255, 0.025);
+    border: 1px solid rgba(189, 255, 255, 0.08);
+    border-radius: 12px;
+    padding: 1.1rem 1.5rem;
+    flex-wrap: wrap;
+  }
+  .cv-equiv-item { display: flex; flex-direction: column; gap: 0.25rem; }
+  .cv-equiv-val {
+    font-size: clamp(1.1rem, 2.5vw, 1.6rem);
+    color: #bdffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 700;
+    line-height: 1;
+  }
+  .cv-equiv-val.coral { color: #ff9b9b; }
+  .cv-of-total { font-size: 0.65em; color: #383848; font-weight: 400; }
+  .cv-equiv-lbl {
+    font-size: 0.52rem;
+    color: #383848;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+  }
+  .cv-equiv-sep {
+    font-size: 1.1rem;
+    color: #1e1e2e;
+    font-family: 'IBM Plex Mono', monospace;
+    flex-shrink: 0;
+  }
+
+  .cv-map-shell {
+    border: 1px solid rgba(189, 255, 255, 0.1);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+  .cv-map-legend {
+    display: flex;
+    align-items: center;
+    gap: 1.25rem;
+    padding: 0.6rem 1.25rem;
+    background: rgba(5, 0, 16, 0.92);
+    border-bottom: 1px solid rgba(189, 255, 255, 0.05);
+    flex-wrap: wrap;
+  }
+  .cv-leg-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.55rem;
+    color: #444455;
+    font-family: 'IBM Plex Mono', monospace;
+  }
+  .cv-leg-dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #2a2a4a;
+    border: 1px solid #3a3a5a;
+    flex-shrink: 0;
+  }
+  .cv-leg-dot.lit {
+    background: #bdffff;
+    border-color: #bdffff;
+    box-shadow: 0 0 8px rgba(189, 255, 255, 0.6);
+  }
+  .cv-leg-note {
+    margin-left: auto;
+    font-size: 0.48rem;
+    color: #22222f;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+  .cv-map-container {
+    position: relative;
+    height: 400px;
+    background: #050010;
+  }
+
+  .cv-lit-list { display: flex; flex-direction: column; gap: 0.75rem; }
+  .cv-lit-label {
+    font-size: 0.5rem;
+    letter-spacing: 3px;
+    color: #2e2e3e;
+    font-family: 'IBM Plex Mono', monospace;
+    text-transform: uppercase;
+  }
+  .cv-chips { display: flex; flex-wrap: wrap; gap: 0.5rem; }
+  .cv-chip {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    background: rgba(189, 255, 255, 0.05);
+    border: 1px solid rgba(189, 255, 255, 0.18);
+    border-radius: 7px;
+    padding: 0.4rem 0.75rem;
+    animation: chip-appear 0.3s ease forwards;
+  }
+  @keyframes chip-appear {
+    from { opacity: 0; transform: translateY(4px) scale(0.96); }
+    to   { opacity: 1; transform: translateY(0) scale(1); }
+  }
+  .cv-chip-name {
+    font-size: 0.6rem;
+    color: #bdffff;
+    font-family: 'IBM Plex Mono', monospace;
+    font-weight: 600;
+    white-space: nowrap;
+  }
+  .cv-chip-mwh {
+    font-size: 0.48rem;
+    color: #333344;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.5px;
+  }
+  .cv-start-hint {
+    font-size: 0.65rem;
+    color: #252535;
+    font-family: 'Space Grotesk', sans-serif;
+    text-align: center;
+    padding: 1rem;
+    margin: 0;
+  }
+
+  /* Unit conversion reference bar */
+  .cv-unit-ref {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    background: rgba(189, 255, 255, 0.03);
+    border: 1px solid rgba(189, 255, 255, 0.07);
+    border-radius: 8px;
+    padding: 0.55rem 1rem;
+  }
+  .cv-unit-item {
+    font-size: 0.52rem;
+    color: #3a3a4a;
+    font-family: 'IBM Plex Mono', monospace;
+    letter-spacing: 0.3px;
+  }
+  .cv-unit-item strong { color: #bdffff; font-weight: 600; }
+  .cv-unit-sep { color: #1e1e2e; font-size: 0.6rem; font-family: 'IBM Plex Mono', monospace; }
+
+  /* "All 50 states" reference marker */
+  .cv-ref-marker--all .cv-ref-line  { background: #bdffff; }
+  .cv-ref-marker--all .cv-ref-label { color: #bdffff; }
+
   /* ── Mobile ───────────────────────────────────────────────────── */
   /* ── Impact map section ──────────────────────────────────────────── */
   .map-shell {
@@ -1175,5 +1727,13 @@
     .calc { padding: 1.5rem; }
     .map-container { height: 320px; }
     .map-footer { flex-direction: column; }
+    /* City electricity map mobile */
+    .cv-query-num { font-size: 1.8rem; }
+    .cv-equiv-row { flex-direction: column; gap: 0.85rem; padding: 0.9rem 1rem; }
+    .cv-equiv-sep { display: none; }
+    .cv-map-container { height: 260px; }
+    .cv-leg-note { display: none; }
+    .cv-slider-top { flex-direction: column; align-items: flex-start; gap: 0.5rem; }
+    .cv-query-display { text-align: left; }
   }
 </style>
