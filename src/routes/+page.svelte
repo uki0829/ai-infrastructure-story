@@ -166,7 +166,7 @@
   // ADDED: dismiss instruction modal and start the story
   function dismissInstructions() { showInstructions = false; showStory = true; connectOnButtonPress(); }
   function handleSkip()   { showStory = false; connectOnButtonPress(); }
-  function handleNext()   { if (activeIndex < maxSlide) activeIndex++; connectOnButtonPress(); }
+  function handleNext()   { if (activeIndex < maxSlide) { activeIndex++; } else { activeIndex = 0; } connectOnButtonPress(); }
   function handlePrev()   { if (activeIndex > 0) activeIndex--; connectOnButtonPress(); }
   function toggleStyle()  { isSatellite = !isSatellite; connectOnButtonPress(); }
 
@@ -599,7 +599,7 @@
       <footer class="nav-bar" in:fade>
         <button class="nav-btn" onclick={handlePrev} disabled={activeIndex === 0}>BACK</button>
         <div class="counter"><span>{activeIndex + 1}</span> / {storyData.length}</div>
-        <button class="nav-btn" onclick={handleNext} disabled={activeIndex === maxSlide}>NEXT</button>
+        <button class="nav-btn" onclick={handleNext}>{activeIndex === maxSlide ? 'RETURN TO BEGINNING' : 'NEXT'}</button>
       </footer>
     {/if}
 
@@ -659,7 +659,8 @@
   .list { max-height: 200px; overflow-y: auto; display: flex; flex-wrap: wrap; gap: 5px; }
   .list button { background: #222; border: 1px solid #333; color: #aaa; padding: 5px 8px; font-size: 0.7rem; cursor: pointer; border-radius: 4px; }
   .list button.active { background: #ff9b9b; color: #000; border-color: #ff9b9b; font-weight: bold; }
-  .reopen-btn { width: 100%; background: #333; color: white; border: none; padding: 0.6rem; border-radius: 6px; cursor: pointer; font-size: 0.8rem; font-family: 'Space Grotesk', sans-serif; margin: 0.3rem 0; }
+  .reopen-btn { width: 100%; background: rgba(0,0,0,0.8); color: #bdffff; border: 1px solid #333; padding: 0.6rem 1.2rem; border-radius: 30px; cursor: pointer; font-family: 'Space Grotesk', sans-serif; font-size: 0.7rem; font-weight: bold; transition: 0.3s; backdrop-filter: blur(10px); margin: 0.3rem 0; box-sizing: border-box; }
+  .reopen-btn:hover { border-color: #bdbfff; box-shadow: 0 0 15px rgba(189,255,255,0.3); }
 
   .state-filter-badge {
     display: flex; align-items: center; justify-content: space-between;

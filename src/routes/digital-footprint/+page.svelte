@@ -48,6 +48,32 @@
     { id: 4, label: 'Environmental Impacts', side: 'right' },
   ];
 
+  const cardInfo = [
+    {
+      title: 'QUERY DISPATCHED',
+      body: 'The sequence diagram begins with a user submitting a query from their device, which initiates the data upload process. These data is being transferred over the internet, traversing throught the network before reaching its destination.',
+    },
+    {
+      title: 'INFRASTRUCTURE ENGAGED',
+      body: 'The next step is where the datacenter as the recipient of the query. The datacenter is a facility that houses a large number of servers and networking equipment, which are responsible for processing and storing data. When the query reaches the datacenter, it engages the infrastructure to handle the incoming data and prepare it for processing.',
+    },
+    {
+      title: 'COMPUTE AT SCALE',
+      body: 'The datacenter processes the query using a vast array of specialized hardware, including GPUs and TPUs, to perform the necessary computations at scale.',
+    },
+    {
+      title: 'HIDDEN COST',
+      body: 'Once the information is being processed and decoded, it will be sent back to you as a response. However, the energy consumption and carbon emissions associated with processing and transmitting data can have significant environmental impacts, contributing to climate change and other ecological issues.',
+    },
+  ];
+
+  function getActive(i: number): boolean {
+    if (i === 0) return card1Active;
+    if (i === 1) return card2Active;
+    if (i === 2) return card3Active;
+    return card4Active;
+  }
+
   // Per-line color pairs (warm→cool→warm cycling)
   const lineColors = [
     { from: '#ffd580', to: '#bdffff' }, // amber  → cyan
@@ -290,6 +316,13 @@
   <div class="zigzag-container">
     {#each nodes as node, i}
       <div class="row {node.side}">
+        <!-- Text box on left for right-side cards -->
+        {#if node.side === 'right' && getActive(i)}
+          <div class="opp-box" in:fade={{ duration: 500 }}>
+            <div class="opp-box-title">{cardInfo[i].title}</div>
+            <div class="opp-box-body">{cardInfo[i].body}</div>
+          </div>
+        {/if}
         <div
           class="card"
           class:card-connected={i === 3 && card4Active}
@@ -437,6 +470,13 @@
 
           <div class="card-label">{node.label}</div>
         </div>
+        <!-- Text box on right for left-side cards -->
+        {#if node.side === 'left' && getActive(i)}
+          <div class="opp-box" in:fade={{ duration: 500 }}>
+            <div class="opp-box-title">{cardInfo[i].title}</div>
+            <div class="opp-box-body">{cardInfo[i].body}</div>
+          </div>
+        {/if}
       </div>
     {/each}
   </div>
@@ -552,9 +592,37 @@
     padding: 0 6vw;
   }
 
-  .row { display: flex; width: 100%; }
-  .row.left  { justify-content: flex-start;  padding-left:  4vw; }
-  .row.right { justify-content: flex-end;    padding-right: 4vw; }
+  .row { display: flex; width: 100%; align-items: center; gap: 2vw; padding: 0 4vw; }
+  .row.left  { /* card naturally at left */ }
+  .row.right .card { margin-left: auto; }
+
+  /* Opposite-side info boxes */
+  .opp-box {
+    width: clamp(160px, 24vw, 320px);
+    flex-shrink: 0;
+    background: rgba(8, 5, 22, 0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(189, 255, 255, 0.18);
+    border-radius: 14px;
+    padding: 1.1rem 1.3rem;
+    box-shadow: 0 0 30px rgba(0,0,0,0.5), 0 0 14px rgba(189,255,255,0.06);
+  }
+  .row.left .opp-box { margin-left: auto; }
+  .opp-box-title {
+    font-size: 0.48rem;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #bdffff;
+    font-family: 'Corpta', monospace;
+    margin-bottom: 0.6rem;
+  }
+  .opp-box-body {
+    font-size: 0.68rem;
+    color: rgba(189, 255, 255, 0.55);
+    line-height: 1.75;
+    font-family: 'Space Grotesk', sans-serif;
+  }
 
   /* ── Cards ───────────────────────────────────── */
   .card {
@@ -768,8 +836,9 @@
       padding: 0 0.5rem;
     }
 
-    .row.left  { padding-left:  1vw; }
-    .row.right { padding-right: 1vw; }
+    .row { flex-wrap: wrap; gap: 0.75rem; padding: 0 1vw; align-items: flex-start; }
+    .row.right .card { margin-left: auto; }
+    .opp-box { width: 100% !important; order: 10; margin-left: 0 !important; }
 
     .card {
       width: min(56vw, 230px);
